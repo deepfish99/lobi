@@ -3,90 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 동물상 테스트</title>
+    <title>AI 얼굴 랜드마크 분석</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', sans-serif; }
         body { background-color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { background: white; width: 100%; max-width: 450px; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
+        .container { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
         h1 { font-size: 1.5rem; color: #1e293b; margin-bottom: 8px; }
         .subtitle { font-size: 0.9rem; color: #64748b; margin-bottom: 24px; }
-        .upload-area { width: 100%; height: 250px; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; overflow: hidden; position: relative; }
+        .upload-area { width: 100%; min-height: 250px; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; overflow: hidden; position: relative; }
         .upload-area:hover { background: #e2e8f0; border-color: #94a3b8; }
         .upload-icon { font-size: 2.5rem; margin-bottom: 8px; }
         .upload-text { font-size: 0.9rem; color: #475569; }
-        #preview { width: 100%; height: 100%; object-fit: cover; display: none; }
+        canvas { max-width: 100%; border-radius: 12px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .btn { width: 100%; padding: 14px; margin-top: 20px; background: #3b82f6; color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
         .btn:hover:not(:disabled) { background: #2563eb; }
-        #loading { display: none; margin-top: 20px; color: #3b82f6; font-weight: 500; }
-        .result-box { display: none; margin-top: 24px; padding: 20px; border-radius: 16px; background: #eff6ff; border: 1px solid #dbeafe; animation: slideUp 0.4s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animal-emoji { font-size: 3.5rem; margin-bottom: 12px; display: block; }
-        .animal-name { font-size: 1.3rem; font-weight: 700; color: #1e40af; margin-bottom: 6px; }
-        .animal-desc { font-size: 0.95rem; color: #1e3a8a; line-height: 1.5; }
+        #status { margin-top: 15px; font-weight: 600; color: #3b82f6; min-height: 24px; font-size: 0.9rem; }
+        .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s infinite linear; margin-right: 8px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📸 동물상 테스트</h1>
-        <p class="subtitle">나와 가장 닮은 동물은 무엇일까요?</p>
-        <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <div id="prompt">
+        <h1>🧬 AI 얼굴 랜드마크 분석</h1>
+        <p class="subtitle">MediaPipe를 활용한 실시간 얼굴 특징점 추출</p>
+        <div class="upload-area" id="dropZone">
+            <div id="placeholder">
                 <span class="upload-icon">📂</span>
                 <p class="upload-text">사진을 클릭하거나 드래그하세요</p>
             </div>
-            <img id="preview">
+            <canvas id="outputCanvas"></canvas>
             <input type="file" id="fileInput" accept="image/*" style="display:none">
         </div>
-        <button class="btn" id="analyzeBtn" disabled>분석 시작하기</button>
-        <div id="loading">분석 중...</div>
-        <div class="result-box" id="resultBox">
-            <span class="animal-emoji" id="resEmoji"></span>
-            <div class="animal-name" id="resName"></div>
-            <p class="animal-desc" id="resDesc"></p>
-        </div>
+        <div id="status">AI 모델 로딩 중...</div>
+        <button class="btn" id="analyzeBtn" disabled><div class="loading" id="spinner"></div>모델 준비 중</button>
     </div>
-    <script>
+    <script type="module">
+        import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm";
+        
         const fileInput = document.getElementById('fileInput');
-        const preview = document.getElementById('preview');
-        const prompt = document.getElementById('prompt');
+        const dropZone = document.getElementById('dropZone');
+        const canvas = document.getElementById('outputCanvas');
+        const ctx = canvas.getContext('2d');
+        const placeholder = document.getElementById('placeholder');
         const analyzeBtn = document.getElementById('analyzeBtn');
-        const loading = document.getElementById('loading');
-        const resultBox = document.getElementById('resultBox');
-        const animals = [
-            { name: "강아지상", emoji: "🐶", desc: "다정다감하고 에너지가 넘치는 성격!" },
-            { name: "고양이상", emoji: "🐱", desc: "세련된 외모와 반전 매력을 가진 당신!" },
-            { name: "토끼상", emoji: "🐰", desc: "보는 사람을 행복하게 만드는 귀여움!" },
-            { name: "사슴상", emoji: "🦌", desc: "맑고 깨끗한 눈망울과 우아한 분위기!" },
-            { name: "곰상", emoji: "🐻", desc: "푸근하고 듬직해서 믿음직스러운 인상!" }
-        ];
-        fileInput.onchange = e => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                    prompt.style.display = 'none';
-                    analyzeBtn.disabled = false;
-                    resultBox.style.display = 'none';
+        const status = document.getElementById('status');
+        const spinner = document.getElementById('spinner');
+
+        let faceLandmarker, drawingUtils, uploadedImage;
+
+        async function init() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+                faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+                    baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "GPU" },
+                    outputFaceBlendshapes: true, runningMode: "IMAGE", numFaces: 1
+                });
+                drawingUtils = new DrawingUtils(ctx);
+                status.innerText = "이미지를 업로드해주세요."; status.style.color = "#475569";
+                analyzeBtn.innerText = "분석하기"; analyzeBtn.disabled = true; spinner.style.display = "none";
+            } catch(e) { console.error(e); status.innerText = "모델 로드 실패"; status.style.color = "red"; }
+        }
+        init();
+
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = e => { e.preventDefault(); dropZone.style.background = "#e2e8f0"; };
+        dropZone.ondragleave = e => { e.preventDefault(); dropZone.style.background = "#f1f5f9"; };
+        dropZone.ondrop = e => { e.preventDefault(); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); };
+        fileInput.onchange = e => { if(e.target.files.length) handleFile(e.target.files[0]); };
+
+        function handleFile(file) {
+            if(!file.type.startsWith('image/')) return alert('이미지 파일만 가능합니다.');
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    uploadedImage = img;
+                    const scale = Math.min(1, 540 / img.width);
+                    canvas.width = img.width * scale; canvas.height = img.height * scale;
+                    ctx.clearRect(0,0,canvas.width,canvas.height);
+                    ctx.drawImage(img, 0,0,canvas.width,canvas.height);
+                    placeholder.style.display = 'none'; canvas.style.display = 'block';
+                    status.innerText = "분석 버튼을 눌러주세요."; status.style.color = "#3b82f6";
+                    if(faceLandmarker) analyzeBtn.disabled = false;
                 };
-                reader.readAsDataURL(file);
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        analyzeBtn.onclick = async () => {
+            if(!faceLandmarker || !uploadedImage) return;
+            status.innerText = "분석 중..."; analyzeBtn.disabled = true;
+            const results = await faceLandmarker.detect(canvas);
+            if(results.faceLandmarks.length > 0) {
+                status.innerText = "✅ 랜드마크 검출 성공!"; status.style.color = "#10b981";
+                for(const landmarks of results.faceLandmarks) {
+                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "#C0C0C070", lineWidth: 1 });
+                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "#FF3030" });
+                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30" });
+                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#E0E0E0" });
+                }
+            } else {
+                status.innerText = "❌ 얼굴을 찾을 수 없습니다."; status.style.color = "#ef4444";
             }
-        };
-        analyzeBtn.onclick = () => {
-            analyzeBtn.style.display = 'none';
-            loading.style.display = 'block';
-            setTimeout(() => {
-                const res = animals[Math.floor(Math.random() * animals.length)];
-                document.getElementById('resEmoji').innerText = res.emoji;
-                document.getElementById('resName').innerText = res.name;
-                document.getElementById('resDesc').innerText = res.desc;
-                loading.style.display = 'none';
-                analyzeBtn.style.display = 'block';
-                analyzeBtn.innerText = "다시 테스트하기";
-                resultBox.style.display = 'block';
-            }, 1500);
+            analyzeBtn.innerText = "다른 사진 분석하기"; analyzeBtn.disabled = false;
         };
     </script>
 </body>
