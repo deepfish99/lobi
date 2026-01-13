@@ -3,40 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 얼굴 랜드마크 분석</title>
+    <title>AI 동물상 테스트 (Rule-Based)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', sans-serif; }
-        body { background-color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        body { background-color: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
         .container { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
-        h1 { font-size: 1.5rem; color: #1e293b; margin-bottom: 8px; }
-        .subtitle { font-size: 0.9rem; color: #64748b; margin-bottom: 24px; }
-        .upload-area { width: 100%; min-height: 250px; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; overflow: hidden; position: relative; }
-        .upload-area:hover { background: #e2e8f0; border-color: #94a3b8; }
-        .upload-icon { font-size: 2.5rem; margin-bottom: 8px; }
-        .upload-text { font-size: 0.9rem; color: #475569; }
-        canvas { max-width: 100%; border-radius: 12px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn { width: 100%; padding: 14px; margin-top: 20px; background: #3b82f6; color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .info-banner { background: #e3f2fd; color: #1e40af; font-size: 0.85rem; padding: 12px; border-radius: 12px; margin-bottom: 20px; word-break: keep-all; }
+        h1 { font-size: 1.6rem; color: #1e293b; margin-bottom: 8px; }
+        .subtitle { font-size: 0.95rem; color: #64748b; margin-bottom: 24px; }
+        .upload-area { width: 100%; min-height: 250px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; overflow: hidden; position: relative; }
+        .upload-area:hover { background: #eff6ff; border-color: #3b82f6; }
+        .upload-icon { font-size: 3rem; margin-bottom: 10px; }
+        .upload-text { font-size: 0.95rem; color: #475569; }
+        canvas { max-width: 100%; border-radius: 12px; display: none; }
+        .btn { width: 100%; padding: 16px; margin-top: 24px; background: #3b82f6; color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
         .btn:hover:not(:disabled) { background: #2563eb; }
-        #status { margin-top: 15px; font-weight: 600; color: #3b82f6; min-height: 24px; font-size: 0.9rem; }
-        .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s infinite linear; margin-right: 8px; vertical-align: middle; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .status-msg { margin-top: 15px; font-weight: 600; color: #64748b; font-size: 0.9rem; min-height: 20px; }
+        .result-card { display: none; margin-top: 30px; padding: 25px; border-radius: 20px; background: #fff; border: 2px solid #e2e8f0; text-align: center; animation: slideUp 0.5s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animal-icon { font-size: 4rem; display: block; margin-bottom: 10px; }
+        .animal-name { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin-bottom: 8px; }
+        .animal-desc { font-size: 1.05rem; color: #3b82f6; font-weight: 600; margin-bottom: 20px; }
+        .reason-box { background: #f1f5f9; border-radius: 12px; padding: 15px; text-align: left; font-size: 0.9rem; color: #475569; line-height: 1.6; }
+        .reason-title { font-weight: 700; color: #64748b; margin-bottom: 5px; font-size: 0.85rem; }
+        .highlight { color: #2563eb; font-weight: 700; }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="info-banner">ℹ️ <strong>재미로 보는 테스트입니다.</strong><br>사진은 서버로 전송되지 않고 브라우저에서만 처리됩니다.</div>
         <h1>🧬 AI 얼굴 랜드마크 분석</h1>
-        <p class="subtitle">MediaPipe를 활용한 실시간 얼굴 특징점 추출</p>
+        <p class="subtitle">얼굴 비율로 알아보는 나의 동물상</p>
         <div class="upload-area" id="dropZone">
-            <div id="placeholder">
-                <span class="upload-icon">📂</span>
-                <p class="upload-text">사진을 클릭하거나 드래그하세요</p>
-            </div>
+            <div id="placeholder"><span class="upload-icon">📸</span><span class="upload-text">사진을 클릭하거나 드래그하세요</span></div>
             <canvas id="outputCanvas"></canvas>
             <input type="file" id="fileInput" accept="image/*" style="display:none">
         </div>
-        <div id="status">AI 모델 로딩 중...</div>
-        <button class="btn" id="analyzeBtn" disabled><div class="loading" id="spinner"></div>모델 준비 중</button>
+        <div class="status-msg" id="statusMsg">AI 모델 로딩 중...</div>
+        <button class="btn" id="analyzeBtn" disabled>모델 준비 중</button>
+        <div class="result-card" id="resultCard">
+            <div class="animal-icon" id="resIcon"></div>
+            <div class="animal-name" id="resName"></div>
+            <div class="animal-desc" id="resDesc"></div>
+            <div class="reason-box">
+                <div class="reason-title">📊 분석 이유 (비율 기반)</div>
+                <div id="resReason1"></div><div id="resReason2"></div>
+            </div>
+        </div>
     </div>
     <script type="module">
         import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm";
@@ -47,8 +61,8 @@
         const ctx = canvas.getContext('2d');
         const placeholder = document.getElementById('placeholder');
         const analyzeBtn = document.getElementById('analyzeBtn');
-        const status = document.getElementById('status');
-        const spinner = document.getElementById('spinner');
+        const statusMsg = document.getElementById('statusMsg');
+        const resultCard = document.getElementById('resultCard');
 
         let faceLandmarker, drawingUtils, uploadedImage;
 
@@ -60,15 +74,16 @@
                     outputFaceBlendshapes: true, runningMode: "IMAGE", numFaces: 1
                 });
                 drawingUtils = new DrawingUtils(ctx);
-                status.innerText = "이미지를 업로드해주세요."; status.style.color = "#475569";
-                analyzeBtn.innerText = "분석하기"; analyzeBtn.disabled = true; spinner.style.display = "none";
-            } catch(e) { console.error(e); status.innerText = "모델 로드 실패"; status.style.color = "red"; }
+                statusMsg.innerText = "이미지를 선택해주세요.";
+                analyzeBtn.innerText = "분석하기";
+                analyzeBtn.disabled = true; 
+            } catch(e) { console.error(e); statusMsg.innerText = "모델 로드 실패"; statusMsg.style.color = "red"; }
         }
         init();
 
         dropZone.onclick = () => fileInput.click();
-        dropZone.ondragover = e => { e.preventDefault(); dropZone.style.background = "#e2e8f0"; };
-        dropZone.ondragleave = e => { e.preventDefault(); dropZone.style.background = "#f1f5f9"; };
+        dropZone.ondragover = e => { e.preventDefault(); dropZone.style.background = "#eef2ff"; };
+        dropZone.ondragleave = e => { e.preventDefault(); dropZone.style.background = "#f8fafc"; };
         dropZone.ondrop = e => { e.preventDefault(); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); };
         fileInput.onchange = e => { if(e.target.files.length) handleFile(e.target.files[0]); };
 
@@ -79,12 +94,13 @@
                 const img = new Image();
                 img.onload = () => {
                     uploadedImage = img;
-                    const scale = Math.min(1, 540 / img.width);
+                    const maxWidth = 540;
+                    const scale = Math.min(1, maxWidth / img.width);
                     canvas.width = img.width * scale; canvas.height = img.height * scale;
                     ctx.clearRect(0,0,canvas.width,canvas.height);
                     ctx.drawImage(img, 0,0,canvas.width,canvas.height);
-                    placeholder.style.display = 'none'; canvas.style.display = 'block';
-                    status.innerText = "분석 버튼을 눌러주세요."; status.style.color = "#3b82f6";
+                    placeholder.style.display = 'none'; canvas.style.display = 'block'; resultCard.style.display = 'none';
+                    statusMsg.innerText = "준비 완료! 분석 버튼을 눌러주세요."; statusMsg.style.color = "#3b82f6";
                     if(faceLandmarker) analyzeBtn.disabled = false;
                 };
                 img.src = e.target.result;
@@ -92,20 +108,51 @@
             reader.readAsDataURL(file);
         }
 
+        function getDistance(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
+
         analyzeBtn.onclick = async () => {
             if(!faceLandmarker || !uploadedImage) return;
-            status.innerText = "분석 중..."; analyzeBtn.disabled = true;
+            statusMsg.innerText = "분석 중..."; analyzeBtn.disabled = true;
             const results = await faceLandmarker.detect(canvas);
+            
             if(results.faceLandmarks.length > 0) {
-                status.innerText = "✅ 랜드마크 검출 성공!"; status.style.color = "#10b981";
-                for(const landmarks of results.faceLandmarks) {
-                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "#C0C0C070", lineWidth: 1 });
-                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "#FF3030" });
-                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30" });
-                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#E0E0E0" });
+                const lm = results.faceLandmarks[0];
+                drawingUtils.drawConnectors(lm, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: "#C0C0C040", lineWidth: 0.5 });
+                drawingUtils.drawConnectors(lm, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "#FF3030" });
+                drawingUtils.drawConnectors(lm, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30" });
+                drawingUtils.drawConnectors(lm, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#E0E0E0" });
+
+                // 비율 계산
+                const leftEyeW = getDistance(lm[33], lm[133]), leftEyeH = getDistance(lm[159], lm[145]);
+                const rightEyeW = getDistance(lm[362], lm[263]), rightEyeH = getDistance(lm[386], lm[374]);
+                const eyeRoundness = ((leftEyeH / leftEyeW) + (rightEyeH / rightEyeW)) / 2;
+                const faceWidth = getDistance(lm[234], lm[454]);
+                const jawWidth = getDistance(lm[58], lm[288]);
+                const jawRatio = jawWidth / faceWidth;
+
+                let animal = {};
+                if (jawRatio > 0.92) {
+                    animal = { icon: "🐻", name: "듬직한 곰상", desc: "우직하고 신뢰감을 주는 편안한 인상", r1: "턱 선이 발달해 강인한 느낌을 줍니다.", r2: "전체적으로 골격이 튼튼해 믿음직스럽네요!" };
+                } else if (eyeRoundness > 0.55) {
+                    animal = { icon: "🐰", name: "상큼발랄 토끼상", desc: "호기심 많고 사랑스러운 매력", r1: "눈의 세로 비율이 높아 동그란 눈을 가졌어요.", r2: "곡선이 강조되어 동안 느낌을 줍니다." };
+                } else if (eyeRoundness > 0.48) {
+                    animal = { icon: "🐶", name: "순둥순둥 강아지상", desc: "다정다감하고 친구 같은 매력", r1: "눈매가 부드럽고 균형이 잡혀 선한 인상입니다.", r2: "호감을 주는 따뜻한 분위기네요!" };
+                } else if (jawRatio < 0.75) {
+                    animal = { icon: "🦊", name: "매력만점 여우상", desc: "사람을 홀리는 지적인 매력", r1: "턱 선이 갸름해 세련된 느낌을 줍니다.", r2: "눈매가 길어 지적인 눈웃음이 특징입니다." };
+                } else {
+                    animal = { icon: "🐱", name: "도도한 고양이상", desc: "시크하지만 빠져드는 반전 매력", r1: "얼굴형과 이목구비 조화가 세련되었습니다.", r2: "적당히 날렵한 눈매가 도도한 분위기를 만드네요." };
                 }
+
+                document.getElementById('resIcon').innerText = animal.icon;
+                document.getElementById('resName').innerText = animal.name;
+                document.getElementById('resDesc').innerText = animal.desc;
+                document.getElementById('resReason1').innerHTML = "📌 " + animal.r1;
+                document.getElementById('resReason2').innerHTML = "📌 " + animal.r2;
+                
+                statusMsg.innerText = "분석 완료!"; statusMsg.style.color = "#10b981";
+                resultCard.style.display = "block";
             } else {
-                status.innerText = "❌ 얼굴을 찾을 수 없습니다."; status.style.color = "#ef4444";
+                statusMsg.innerText = "❌ 얼굴을 찾을 수 없습니다."; statusMsg.style.color = "#ef4444";
             }
             analyzeBtn.innerText = "다른 사진 분석하기"; analyzeBtn.disabled = false;
         };
