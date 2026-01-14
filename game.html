@@ -142,7 +142,7 @@
         paused: false,
         score: 0,
         level: 1,
-        lives: 3,
+        lives: 10,
         highScore: localStorage.getItem('synthShooterHS') || 0,
         speed: 4,
         frames: 0,
@@ -350,9 +350,9 @@
             this.type = Math.random() > 0.8 ? 'TANK' : (Math.random() > 0.7 ? 'KAMIKAZE' : 'DRONE');      
 
             if (this.type === 'TANK') {
-                this.hp = 5; this.radius = 30; this.color = '#ff5500'; this.speedX = -2;
+                this.hp = 5; this.radius = 30; this.color = '#ff5500'; this.speedX = -1.5;
             } else if (this.type === 'KAMIKAZE') {
-                this.hp = 1; this.color = '#ff0000'; this.speedX = -5;
+                this.hp = 1; this.color = '#ff0000'; this.speedX = -3;
             } else {
                 this.hp = 2; this.color = '#ff0033'; this.speedX = -4 - (gameState.level * 0.5);
             }
@@ -395,7 +395,7 @@
         constructor() {
             this.width = 100; this.height = 120;
             this.x = GAME_WIDTH + 150; this.y = GAME_HEIGHT / 2 - 60;
-            this.hp = 80 + (gameState.level * 20); this.maxHp = this.hp;
+            this.hp = 40 + (gameState.level * 10); this.maxHp = this.hp;
             this.vy = 2; this.color = '#ff0000';
             this.phase = 0; 
             this.shootTimer = 0;
@@ -519,7 +519,7 @@
             ...gameState,
             score: 0,
             level: 1,
-            lives: 3,
+            lives: 10,
             speed: 4,
             frames: 0,
             shake: 0
@@ -563,7 +563,7 @@
             return;
         }
 
-        player.invincible = 120;
+        player.invincible = 240;
         addShake(20);
         Sound.damage();
         createExplosion(player.x, player.y, player.color, 20);
@@ -634,7 +634,7 @@
                             e.markedForDeletion = true;
                             createExplosion(e.x, e.y, e.color, 10);
                             gameState.score += 100;
-                            if(Math.random() > 0.9) powerups.push(new PowerUp(e.x, e.y));
+                            if(Math.random() > 0.7) powerups.push(new PowerUp(e.x, e.y));
                         }
                     }
                 });
@@ -745,4 +745,5 @@
 </script>
 </body>
 </html>
+
 
